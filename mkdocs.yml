@@ -1,0 +1,29 @@
+site_name: TODO: your repository name
+
+repo_url: TODO: your repository url
+
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - content.code.annotate
+  markdown_extensions:
+    - markdown.extensions.admonition
+    - markdown.extensions.codehilite
+    - pymdownx.superfences
+
+plugins:
+  - search
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          options:
+            docstring_style: numpy
+
+nav:
+  - Home: README.md
+  - Contributing: CONTRIBUTING.md
+  - Code of Conduct: CODE_OF_CONDUCT.md
+  - Code Reference:
+      - Some Module: api/some_module.md

@@ -1,0 +1,17 @@
+[build-system]
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = TODO: pick a project name
+version = "0.1.0"
+description = TODO: input a project description
+authors = [
+    { name = TODO: your name here },
+]
+dependencies = [
+]
+readme = "README.md"
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
