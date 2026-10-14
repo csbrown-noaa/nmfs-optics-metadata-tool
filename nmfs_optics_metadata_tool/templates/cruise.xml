@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gmi:MI_Metadata 
+    xmlns:gmi="http://www.isotc211.org/2005/gmi" 
+    xmlns:gmd="http://www.isotc211.org/2005/gmd" 
+    xmlns:gco="http://www.isotc211.org/2005/gco" 
+    xmlns:gml="http://www.opengis.net/gml/3.2"
+    xmlns:xlink="http://www.w3.org/1999/xlink">
+    
+    <gmd:fileIdentifier>
+        <gco:CharacterString>{{ cruise_uuid }}</gco:CharacterString>
+    </gmd:fileIdentifier>
+    
+    <gmd:language>
+        <gmd:LanguageCode codeList="http://www.loc.gov/standards/iso639-2/" codeListValue="eng">eng</gmd:LanguageCode>
+    </gmd:language>
+
+    <!-- NEW: Link back to the overarching Survey -->
+    <gmd:parentIdentifier>
+        <gco:CharacterString>{{ survey_uuid }}</gco:CharacterString>
+    </gmd:parentIdentifier>
+    
+    <!-- Defines this record as a Parent (Series) to the sites, child to Survey -->
+    <gmd:hierarchyLevel>
+        <gmd:MD_ScopeCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#MD_ScopeCode" codeListValue="series">series</gmd:MD_ScopeCode>
+    </gmd:hierarchyLevel>
+    
+    <gmd:metadataStandardName>
+        <gco:CharacterString>ISO 19115-2 Geographic Information - Metadata - Part 2: Extensions for Imagery and Gridded Data</gco:CharacterString>
+    </gmd:metadataStandardName>
+    <gmd:metadataStandardVersion>
+        <gco:CharacterString>ISO 19115-2:2009(E)</gco:CharacterString>
+    </gmd:metadataStandardVersion>
+    
+    <gmd:identificationInfo>
+        <gmd:MD_DataIdentification>
+            <gmd:citation>
+                <gmd:CI_Citation>
+                    <gmd:title>
+                        <gco:CharacterString>Cruise: {{ cruise_name }}</gco:CharacterString>
+                    </gmd:title>
+                    <gmd:date>
+                        <gmd:CI_Date>
+                            <gmd:date><gco:Date>{{ today_date }}</gco:Date></gmd:date>
+                            <gmd:dateType>
+                                <gmd:CI_DateTypeCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#CI_DateTypeCode" codeListValue="creation">creation</gmd:CI_DateTypeCode>
+                            </gmd:dateType>
+                        </gmd:CI_Date>
+                    </gmd:date>
+                </gmd:CI_Citation>
+            </gmd:citation>
+            <gmd:abstract>
+                <gco:CharacterString>Cruise series record containing individual drop sites and transects.</gco:CharacterString>
+            </gmd:abstract>
+            
+            <gmd:extent>
+                <gmd:EX_Extent>
+                    <gmd:geographicElement>
+                        <gmd:EX_GeographicBoundingBox>
+                            <gmd:westBoundLongitude><gco:Decimal>{{ cruise_west }}</gco:Decimal></gmd:westBoundLongitude>
+                            <gmd:eastBoundLongitude><gco:Decimal>{{ cruise_east }}</gco:Decimal></gmd:eastBoundLongitude>
+                            <gmd:southBoundLatitude><gco:Decimal>{{ cruise_south }}</gco:Decimal></gmd:southBoundLatitude>
+                            <gmd:northBoundLatitude><gco:Decimal>{{ cruise_north }}</gco:Decimal></gmd:northBoundLatitude>
+                        </gmd:EX_GeographicBoundingBox>
+                    </gmd:geographicElement>
+                    <gmd:temporalElement>
+                        <gmd:EX_TemporalExtent>
+                            <gmd:extent>
+                                <gml:TimePeriod gml:id="cruise_time">
+                                    <gml:beginPosition>{{ cruise_start_time }}</gml:beginPosition>
+                                    <gml:endPosition>{{ cruise_end_time }}</gml:endPosition>
+                                </gml:TimePeriod>
+                            </gmd:extent>
+                        </gmd:EX_TemporalExtent>
+                    </gmd:temporalElement>
+                </gmd:EX_Extent>
+            </gmd:extent>
+        </gmd:MD_DataIdentification>
+    </gmd:identificationInfo>
+    
+    <gmi:acquisitionInformation>
+        <gmi:MI_AcquisitionInformation>
+            <gmi:operation>
+                <gmi:MI_Operation>
+                    <gmi:description><gco:CharacterString>{{ cruise_name }}</gco:CharacterString></gmi:description>
+                    <gmi:identifier>
+                        <gmd:MD_Identifier>
+                            <gmd:code><gco:CharacterString>{{ cruise_name }}</gco:CharacterString></gmd:code>
+                        </gmd:MD_Identifier>
+                    </gmi:identifier>
+                    <gmi:status>
+                        <gmd:MD_ProgressCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#MD_ProgressCode" codeListValue="completed">completed</gmd:MD_ProgressCode>
+                    </gmi:status>
+                </gmi:MI_Operation>
+            </gmi:operation>
+            <gmi:platform>
+                <gmi:MI_Platform>
+                    <gmi:citation>
+                        <gmd:CI_Citation>
+                            <gmd:title><gco:CharacterString>{{ ship_name }}</gco:CharacterString></gmd:title>
+                        </gmd:CI_Citation>
+                    </gmi:citation>
+                    <gmi:identifier>
+                        <gmd:MD_Identifier>
+                            <gmd:code><gco:CharacterString>{{ ship_name }}</gco:CharacterString></gmd:code>
+                        </gmd:MD_Identifier>
+                    </gmi:identifier>
+                    <gmi:description><gco:CharacterString>Research Vessel</gco:CharacterString></gmi:description>
+                </gmi:MI_Platform>
+            </gmi:platform>
+        </gmi:MI_AcquisitionInformation>
+    </gmi:acquisitionInformation>
+</gmi:MI_Metadata>
+

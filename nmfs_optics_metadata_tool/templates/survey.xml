@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gmi:MI_Metadata 
+    xmlns:gmi="http://www.isotc211.org/2005/gmi" 
+    xmlns:gmd="http://www.isotc211.org/2005/gmd" 
+    xmlns:gco="http://www.isotc211.org/2005/gco" 
+    xmlns:gml="http://www.opengis.net/gml/3.2"
+    xmlns:xlink="http://www.w3.org/1999/xlink">
+    
+    <!-- Unique Identifier for the Survey (Grandparent) -->
+    <gmd:fileIdentifier>
+        <gco:CharacterString>{{ survey_uuid }}</gco:CharacterString>
+    </gmd:fileIdentifier>
+    
+    <gmd:language>
+        <gmd:LanguageCode codeList="http://www.loc.gov/standards/iso639-2/" codeListValue="eng">eng</gmd:LanguageCode>
+    </gmd:language>
+    
+    <!-- Defines this record as a Grandparent (Project) -->
+    <gmd:hierarchyLevel>
+        <gmd:MD_ScopeCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#MD_ScopeCode" codeListValue="project">project</gmd:MD_ScopeCode>
+    </gmd:hierarchyLevel>
+    
+    <gmd:metadataStandardName>
+        <gco:CharacterString>ISO 19115-2 Geographic Information - Metadata - Part 2: Extensions for Imagery and Gridded Data</gco:CharacterString>
+    </gmd:metadataStandardName>
+    <gmd:metadataStandardVersion>
+        <gco:CharacterString>ISO 19115-2:2009(E)</gco:CharacterString>
+    </gmd:metadataStandardVersion>
+    
+    <gmd:identificationInfo>
+        <gmd:MD_DataIdentification>
+            <gmd:citation>
+                <gmd:CI_Citation>
+                    <gmd:title>
+                        <gco:CharacterString>Survey Project: {{ survey_name }}</gco:CharacterString>
+                    </gmd:title>
+                    <gmd:date>
+                        <gmd:CI_Date>
+                            <gmd:date><gco:Date>{{ today_date }}</gco:Date></gmd:date>
+                            <gmd:dateType>
+                                <gmd:CI_DateTypeCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#CI_DateTypeCode" codeListValue="creation">creation</gmd:CI_DateTypeCode>
+                            </gmd:dateType>
+                        </gmd:CI_Date>
+                    </gmd:date>
+                </gmd:CI_Citation>
+            </gmd:citation>
+            <gmd:abstract>
+                <gco:CharacterString>Overarching Survey record encompassing multiple research cruises. The spatial and temporal extents represent the total footprint of all associated cruise series.</gco:CharacterString>
+            </gmd:abstract>
+            
+            <!-- Rolled up Spatial and Temporal Extent of ALL Cruises -->
+            <gmd:extent>
+                <gmd:EX_Extent>
+                    <gmd:geographicElement>
+                        <gmd:EX_GeographicBoundingBox>
+                            <gmd:westBoundLongitude><gco:Decimal>{{ survey_west }}</gco:Decimal></gmd:westBoundLongitude>
+                            <gmd:eastBoundLongitude><gco:Decimal>{{ survey_east }}</gco:Decimal></gmd:eastBoundLongitude>
+                            <gmd:southBoundLatitude><gco:Decimal>{{ survey_south }}</gco:Decimal></gmd:southBoundLatitude>
+                            <gmd:northBoundLatitude><gco:Decimal>{{ survey_north }}</gco:Decimal></gmd:northBoundLatitude>
+                        </gmd:EX_GeographicBoundingBox>
+                    </gmd:geographicElement>
+                    <gmd:temporalElement>
+                        <gmd:EX_TemporalExtent>
+                            <gmd:extent>
+                                <gml:TimePeriod gml:id="survey_time">
+                                    <gml:beginPosition>{{ survey_start_time }}</gml:beginPosition>
+                                    <gml:endPosition>{{ survey_end_time }}</gml:endPosition>
+                                </gml:TimePeriod>
+                            </gmd:extent>
+                        </gmd:EX_TemporalExtent>
+                    </gmd:temporalElement>
+                </gmd:EX_Extent>
+            </gmd:extent>
+        </gmd:MD_DataIdentification>
+    </gmd:identificationInfo>
+</gmi:MI_Metadata>
+
