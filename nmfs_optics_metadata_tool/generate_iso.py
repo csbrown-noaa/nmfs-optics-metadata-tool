@@ -8,10 +8,10 @@ from jinja2 import Environment, PackageLoader
 
 # Setup Jinja2 Environment to load templates from the package structure
 # NOTE: Replace 'my_package' with the actual name of your inner python module folder.
-env = Environment(loader=PackageLoader('my_package', 'templates'))
-survey_template = env.get_template('survey_template.xml')
-cruise_template = env.get_template('cruise_template.xml')
-site_template = env.get_template('site_template.xml')
+env = Environment(loader=PackageLoader('nmfs_optics_metadata_tool', 'templates'))
+survey_template = env.get_template('survey.xml')
+cruise_template = env.get_template('cruise.xml')
+site_template = env.get_template('site.xml')
 
 # ISO XML Namespaces needed for parsing child records
 NAMESPACES = {
