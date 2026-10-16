@@ -1,106 +1,147 @@
 # Relational CSV Structure for ISO 19115-2 / NCEI Metadata
 
 **Document Type:** Architecture Standard & Compliance Guidelines
-**Target Standards:** ISO 19115-2, NCEI Archival Rubric, OGC SensorThings (Conceptual)
+**Target Standard:** ISO 19115-2:2009 (via ISO 19139 XML encoding)
+**Target Archives:** NOAA NCEI, OGC SensorThings (Conceptual)
 
 ## 1. Architectural Principles and Normative Rules
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in RFC 2119.
 
-This standard utilizes an Event-Driven relational model distributed across seven CSV tables, linked by exact, descriptive engineering headers (e.g., `event_id`). 
+This standard utilizes a normalized, 8-table relational CSV model linked by UUIDs. This decouples the physical database layout from the final graph-based XML representation, ensuring data integrity while satisfying complex semantic web ontologies.
 
-### 1.1 Record Granularity and Hierarchy
-* **Granularity:** Implementations SHALL generate a discrete ISO 19115-2 record for every event node. Top-level nodes (no parent) map to `MD_ScopeCode="project"` or `"series"`. Leaf nodes map to `MD_ScopeCode="dataset"`.
-* **Inheritance:** "Skinny Child" leaf events MAY omit heavy descriptive fields (e.g., Contacts, Abstracts). Compiling pipelines MUST resolve missing mandatory fields by walking up the `parent_event_id` chain and inheriting values from the nearest populated ancestor.
+### 1.1. CSV Mechanical Conventions
+* **Encoding:** All CSV files MUST be encoded in UTF-8.
+* **Separators & Escaping:** The delimiter is a comma (`,`). Fields containing commas (especially WKT geometries) MUST be enclosed in double quotes (`"`).
+* **Null Values:** Missing or empty values MUST be represented as an empty string (no characters between commas).
+* **Identifiers:** All Primary/Foreign Keys MUST be valid UUIDs (v4 recommended).
 
-### 1.2 Geometry and Temporal Rules
-* **CRS:** All spatial coordinates MUST be expressed in WGS84 (EPSG:4326) with a Longitude/Latitude axis order. 
-* **Bounding Boxes:** Pipelines SHALL derive ISO 19115 bounding boxes from the provided `geometry` Well-Known Text (WKT). Implementations MUST correctly calculate boxes crossing the antimeridian.
-* **Ongoing Events:** If an event is currently active, `end_time` MAY be left NULL, resolving to a nil reason of "unknown" or "ongoing" in the resulting ISO XML.
+### 1.2. Record Granularity and Scope Codes
+Implementations SHALL generate a discrete ISO 19115-2 XML record for nodes in the event tree based on the following scope mappings:
+* **Root Nodes (No Parent):** Map to `MD_ScopeCode="initiative"` (Survey/Program) or `"series"` (Cruise).
+* **Intermediate Nodes:** Map to `MD_ScopeCode="fieldSession"` (e.g., a Deployment or Leg).
+* **Leaf Nodes:** Map to `MD_ScopeCode="dataset"` (e.g., a discrete Drop Site or Transect).
 
-### 1.3 Data Payload Separation
-This metadata schema defines *discovery metadata*. Data payloads (e.g., self-describing NetCDF files, STAC Catalogs for imagery) SHALL NOT be stored within these tables. They MUST be referenced via the `Related_Entities.csv` network table.
+### 1.3. Inheritance and Aggregation Logic
+Every row in the CSVs MUST be valid and coherent on its own. To assemble a complete, compliant ISO record, downstream XML generators SHALL apply the following matrix:
+
+* **Strictly Explicit (No Inheritance):** Fields like `abstract`, `purpose`, and links to `Platforms`, `Sensors`, `Variables`, and `Related_Entities` DO NOT inherit. A leaf node MUST explicitly define its own abstract (e.g., generated dynamically during dump as "Drop site [X] during cruise [Y]") and its specific hardware/data links. A child DOES NOT inherit a parent's URL or ship.
+* **Top-Down Inheritance (Merge):** `Administrative`, `Contacts`, and `Keywords`. Child datasets automatically inherit and merge these global properties from their ancestors. A resolved event chain MUST contain at least one `pointOfContact` and one `metadataAuthor`.
+* **Bottom-Up Aggregation (Bounding):** `geometry` and `start_time`/`end_time` DO NOT inherit downward. Instead, a Parent node's spatiotemporal extent is computed as the bounding box (or convex hull) of all its descendant events.
+
+### 1.4. Geometry and Temporal Rules
+* **CRS and Axis:** Spatial coordinates MUST use WGS84 (EPSG:4326) with a Longitude/Latitude axis order. 
+* **Bounding Boxes:** Implementations MUST derive ISO bounding boxes from the Well-Known Text (WKT). 
+    * *Point Geometries:* Degenerate to a box where min/max values are identical.
+    * *Antimeridian:* Bounding boxes crossing the 180th meridian MUST be represented with `westBoundLongitude` > `eastBoundLongitude`.
+* **Ongoing Events:** If an event is currently active, `end_time` MAY be NULL. XML builders SHALL translate this to `indeterminatePosition="now"`.
+* **Automated Dates:** The metadata creation date (`CI_DateTypeCode="creation"`) and date stamp SHALL be generated by the XML compilation engine using the current system time.
 
 ---
 
 ## 2. Schema Definitions
 
+*Requirement tags: **[System]** = Relational integrity; **[ISO]** = ISO 19115 core mandate; **[NCEI]** = NCEI Archival Rubric mandate.*
+
 ### 2.1 Events.csv (The Core Tree)
-*Establishes the hierarchy, timing, and spatial footprint. One distinct platform operation = one event.*
+*Establishes the hierarchy, timing, and spatial footprint. Uniqueness constraint: An `event_id` represents a single spatial-temporal activity.*
 
-| CSV Header | Target Standard / Ontology | Requirement Level | Description |
+| CSV Header | Target Ontology / XML Element | Requirement | Description |
 | ----- | ----- | ----- | ----- |
-| `event_id` | `dc:identifier` / `MD_Identifier` | **MUST** | Primary Key. Unique UUID for this specific event node. |
-| `parent_event_id` | `dcterms:isPartOf` / `parentIdentifier` | **OPTIONAL** | Foreign Key to parent event. Null for root nodes. |
-| `event_type` | `dc:type` / `MI_Operation` | **MUST** | Event category (e.g., `Cruise`, `Drop Site`, `UAV Flight`). |
-| `event_name` | `dc:title` | **MUST** | Human-readable name or local code (e.g., "Pac-Geo-01"). |
-| `abstract` | `dcterms:abstract` | **MUST (Ancestry)** | Plain-language executive summary. |
-| `purpose` | `acdd:purpose` | **RECOMMENDED** | Scientific rationale or funding purpose. |
-| `start_time` | `acdd:time_coverage_start` | **MUST** | Time period begin (Strict ISO 8601). |
-| `end_time` | `acdd:time_coverage_end` | **MUST** | Time period end (Strict ISO 8601). |
-| `geometry` | `locn:geometry` / `EX_Extent` | **MUST** | WKT representing the footprint (WGS84). |
+| `event_id` | `gmd:fileIdentifier` | **MUST** [System] | Primary Key. Unique UUID for this node. |
+| `parent_event_id` | `gmd:parentIdentifier` | **OPTIONAL** | Foreign Key. Null for root nodes. |
+| `event_type` | `gmi:MI_Operation` | **MUST** [ISO] | Category (e.g., `Cruise`, `Drop Site`). |
+| `event_name` | `gmd:title` | **MUST** [ISO] | Human-readable name (e.g., "Pac-Geo-01"). |
+| `abstract` | `gmd:abstract` | **MUST** [ISO] | Plain-language executive summary. MUST be explicitly populated for every event. |
+| `purpose` | `gmd:purpose` | **RECOMMENDED** | Scientific rationale. |
+| `start_time` | `gml:beginPosition` | **MUST** [ISO] | ISO 8601 Timestamp. |
+| `end_time` | `gml:endPosition` | **CONDITIONAL** | ISO 8601 Timestamp. MUST exist unless ongoing. |
+| `geometry` | `gml:Geometry` | **MUST** [ISO] | WGS84 WKT footprint (e.g., `POINT(-124.5 45.1)`). |
 
-### 2.2 Contacts.csv (The People & Organizations)
-*ISO 19115-2 requires distinct roles and comprehensive contact info, necessitating a dedicated table.*
+### 2.2 Administrative.csv (Global Metadata Constraints)
+*Holds static overarching properties. Inherited via Top-Down Merging.*
 
-| CSV Header | Target Standard / Ontology | Requirement Level | Description |
+| CSV Header | Target Ontology / XML Element | Requirement | Description |
 | ----- | ----- | ----- | ----- |
-| `event_id` | `dcterms:isPartOf` | **MUST** | Foreign Key to `Events.csv`. |
-| `contact_name` | `acdd:creator_name` / `CI_ResponsibleParty` | **RECOMMENDED** | Name of the person (if applicable). |
-| `organization` | `acdd:creator_institution` | **MUST** | Name of the responsible organization. |
-| `email` | `acdd:creator_email` | **MUST** | Contact email address. |
-| `role` | `CI_RoleCode` | **MUST** | ISO role (e.g., `principalInvestigator`, `pointOfContact`, `custodian`). |
-| `orcid` | `dc:identifier` | **RECOMMENDED** | ORCID or ROR URL for the contact/org. |
+| `admin_id` | `dc:identifier` | **MUST** [System] | Primary Key. |
+| `event_id` | `gmd:parentIdentifier` | **MUST** [System] | Foreign Key to Events.csv (usually Root). |
+| `language` | `gmd:language` | **MUST** [ISO] | Three-letter code (e.g., `eng`). |
+| `topic_category` | `gmd:topicCategory` | **MUST** [ISO] | ISO topic category (e.g., `oceans`). |
+| `license_text` | `gmd:useLimitation` | **MUST** [NCEI] | Usage constraints (e.g., "CC-BY 4.0"). |
 
-### 2.3 Platforms.csv (The Vehicles / "Things")
-*Tracks the physical vehicles. Utilizes global registries (e.g., ICES, IMO) rather than local UUID primary keys.*
+### 2.3 Contacts.csv (The People & Organizations)
+*ISO requires explicit roles and emails. Inherited via Top-Down Merging.*
 
-| CSV Header | Target Standard / Ontology | Requirement Level | Description |
+| CSV Header | Target Ontology / XML Element | Requirement | Description |
 | ----- | ----- | ----- | ----- |
-| `event_id` | `dcterms:isPartOf` | **MUST** | Foreign Key to `Events.csv`. |
-| `platform_identifier`| `dc:identifier` / `MI_Platform` | **MUST** | Code from a recognized global registry. |
-| `identifier_type` | `dc:type` | **MUST** | The registry used (e.g., `ICES`, `IMO`, `Local`). |
-| `platform_name` | `dc:title` | **MUST** | Human-readable name (e.g., "R/V Atlantis"). |
-| `platform_type` | `acdd:platform` | **RECOMMENDED** | Make/Model/Class of the vehicle. |
+| `contact_id` | `dc:identifier` | **MUST** [System] | Primary Key. |
+| `event_id` | `gmd:CI_ResponsibleParty` | **MUST** [System] | Foreign Key to Events.csv. |
+| `contact_name` | `gmd:individualName` | **RECOMMENDED** | Name of the person. |
+| `organization` | `gmd:organisationName` | **MUST** [ISO] | Responsible institution. |
+| `email` | `gmd:electronicMailAddress` | **MUST** [NCEI] | Contact email address. |
+| `role` | `gmd:CI_RoleCode` | **MUST** [ISO] | e.g., `principalInvestigator`, `metadataAuthor`. |
+| `identifier` | `gmd:MD_Identifier` | **RECOMMENDED** | Machine identifier (e.g., ORCID or ROR). |
+| `identifier_type`| `gmd:MD_Identifier` | **CONDITIONAL** | e.g., `ORCID`, `ROR`. MUST exist if identifier exists. |
 
-### 2.4 Sensors.csv (The Instruments)
-*Tracks specific measurement devices used during the event.*
+### 2.4 Platforms.csv (The Vehicles)
+*Tracks physical vehicles deployed during an event. Does NOT inherit.*
 
-| CSV Header | Target Standard / Ontology | Requirement Level | Description |
+| CSV Header | Target Ontology / XML Element | Requirement | Description |
 | ----- | ----- | ----- | ----- |
-| `sensor_id` | `dc:identifier` | **MUST** | Primary Key for this deployment instance of the sensor. |
-| `event_id` | `dcterms:isPartOf` | **MUST** | Foreign Key to `Events.csv`. |
-| `sensor_name` | `dc:title` / `MI_Instrument` | **MUST** | Human-readable name (e.g., "SBE 911plus"). |
-| `instrument_type` | `acdd:instrument` | **RECOMMENDED** | Broad type category (e.g., "CTD"). |
-| `vocabulary` | `acdd:instrument_vocabulary`| **RECOMMENDED** | Standard vocabulary used for the type. |
+| `platform_id` | `dc:identifier` | **MUST** [System] | Primary Key (Instance of Deployment). |
+| `event_id` | `gmi:MI_Platform` | **MUST** [System] | Foreign Key to Events.csv. |
+| `platform_identifier`| `gmd:MD_Identifier` | **RECOMMENDED** | Code from a global registry (e.g., IMO, WMO). |
+| `identifier_type` | `gmd:MD_Identifier` | **RECOMMENDED** | Registry name (e.g., `ICES`, `Local`). |
+| `platform_name` | `gmi:identifier` | **MUST** [NCEI] | Human-readable name (e.g., "R/V Atlantis"). |
+| `description` | `gmi:description` | **MUST** [NCEI] | Make/Model/Class of the vehicle. |
 
-### 2.5 Variables.csv (The Datastream / "ObservedProperty")
-*Tracks scientific measurements. Directly linked to the Sensor that measured it to preserve data lineage.*
+### 2.5 Sensors.csv (The Instruments)
+*Tracks specific measurement devices used during the event. Does NOT inherit.*
 
-| CSV Header | Target Standard / Ontology | Requirement Level | Description |
+| CSV Header | Target Ontology / XML Element | Requirement | Description |
 | ----- | ----- | ----- | ----- |
-| `sensor_id` | `dcterms:isPartOf` | **MUST** | Foreign Key to `Sensors.csv`. |
-| `variable_name` | `cf:standard_name` / `MD_Band` | **MUST** | Short standard name (e.g., "sea_water_temperature"). |
-| `variable_desc` | `dc:description` | **MUST** | Long-form description as required by NCEI. |
-| `unit_of_measure`| `qudt:unit` | **MUST** | Physical unit (e.g., "Celsius", "meter"). |
+| `sensor_id` | `dc:identifier` | **MUST** [System] | Primary Key. |
+| `event_id` | `gmi:MI_Instrument` | **MUST** [System] | Foreign Key to Events.csv. |
+| `sensor_name` | `gmi:identifier` | **MUST** [NCEI] | Human-readable name (e.g., "SBE 911plus"). |
+| `description` | `gmi:description` | **MUST** [NCEI] | Deep description of the sensor. |
+| `instrument_type` | `gmi:type` | **RECOMMENDED** | Broad type category (e.g., "CTD"). |
 
-### 2.6 Keywords.csv (The Vocabulary)
-*Handles thematic, spatial, and organizational discoverability.*
+### 2.6 Variables.csv (The Measurements)
+*Tracks scientific parameters. Does NOT inherit.*
 
-| CSV Header | Target Standard / Ontology | Requirement Level | Description |
+| CSV Header | Target Ontology / XML Element | Requirement | Description |
 | ----- | ----- | ----- | ----- |
-| `event_id` | `dcterms:isPartOf` | **MUST** | Foreign Key to `Events.csv`. |
-| `keyword_type` | `MD_KeywordTypeCode` | **MUST** | ISO category (e.g., `theme`, `place`, `stratum`). |
-| `vocabulary` | `acdd:keyword_vocabulary` | **MUST** | Thesaurus used (e.g., "GCMD Science Keywords"). |
-| `keyword` | `dc:subject` | **MUST** | The exact hierarchical keyword string. |
+| `variable_id` | `dc:identifier` | **MUST** [System] | Primary Key. |
+| `event_id` | `gmd:MD_Band` | **MUST** [System] | Foreign Key to Events.csv. |
+| `sensor_id` | `gmi:MI_Instrument` | **OPTIONAL** | FK to Sensors. Null for derived/model data. |
+| `local_name` | `gmd:name` | **MUST** [NCEI] | Local parameter name. |
+| `cf_standard_name` | `gmd:name` | **RECOMMENDED** | CF Standard Name (if applicable). |
+| `description` | `gmd:description` | **MUST** [NCEI] | Long-form description of what was measured. |
+| `unit` | `gmd:units` | **MUST** [NCEI] | UDUNITS or UCUM string (e.g., `degree_C`). |
+| `data_type` | `gco:TypeName` | **RECOMMENDED** | Storage type (e.g., `Float32`). |
 
-### 2.7 Related_Entities.csv (The Network)
-*Links external context and provides direct data access endpoints (e.g., NetCDF files, STAC Catalogs).*
+### 2.7 Keywords.csv (The Vocabulary)
+*Handles thematic and spatial discoverability. Inherits via Top-Down Merging.*
 
-| CSV Header | Target Standard / Ontology | Requirement Level | Description |
+| CSV Header | Target Ontology / XML Element | Requirement | Description |
 | ----- | ----- | ----- | ----- |
-| `event_id` | `dcterms:isPartOf` | **MUST** | Foreign Key to `Events.csv`. |
-| `relation_type` | `dc:relation` / `CI_RoleCode` | **MUST** | Standard link type (e.g., `isRelatedTo`, `download`). |
-| `entity_title` | `dc:title` | **RECOMMENDED** | Name of the project, dataset, or paper. |
-| `entity_url` | `dc:source` / `CI_OnlineResource`| **RECOMMENDED** | Direct URL to the entity/payload. |
-| `entity_id` | `dc:identifier` | **OPTIONAL** | External machine key (DOI, Grant ID). |
+| `keyword_id` | `dc:identifier` | **MUST** [System] | Primary Key. |
+| `event_id` | `gmd:MD_Keywords` | **MUST** [System] | Foreign Key to Events.csv. |
+| `keyword_type` | `gmd:MD_KeywordTypeCode`| **MUST** [ISO] | e.g., `theme`, `place`, `instrument`. |
+| `vocabulary` | `acdd:keywords_vocabulary`| **RECOMMENDED** | Thesaurus used (e.g., "GCMD Science Keywords"). |
+| `keyword` | `gmd:keyword` | **MUST** [ISO] | The exact keyword string. |
+
+### 2.8 Related_Entities.csv (The Network & Payload Links)
+*Dual-purpose table. If `url` is populated, XML engines SHALL map this to `CI_OnlineResource` (Data Links). If `external_identifier` is populated without a URL, XML engines SHALL map this to `MD_AggregateInformation` (Projects/Papers). Does NOT inherit.*
+
+| CSV Header | Target Ontology / XML Element | Requirement | Description |
+| ----- | ----- | ----- | ----- |
+| `entity_id` | `dc:identifier` | **MUST** [System] | Primary Key. |
+| `event_id` | `gmd:aggregationInfo` | **MUST** [System] | Foreign Key to Events.csv. |
+| `relation_type` | `gmd:DS_AssociationTypeCode`| **MUST** [ISO] | e.g., `crossReference`, `isComposedOf`. |
+| `function_code` | `gmd:CI_OnLineFunctionCode`| **CONDITIONAL** | e.g., `download`. MUST exist if `url` exists. |
+| `protocol` | `gmd:protocol` | **RECOMMENDED** | e.g., `HTTPS`, `STAC`, `OPeNDAP`. |
+| `title` | `gmd:name` | **MUST** [ISO] | Name of the related entity/payload. |
+| `external_identifier`| `gmd:MD_Identifier` | **CONDITIONAL** | e.g., DOI or Grant ID. |
+| `url` | `gmd:linkage` | **CONDITIONAL** | MUST exist for data payload links. |
+
