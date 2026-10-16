@@ -1,97 +1,106 @@
-## 1. Architectural Overview
+# Relational CSV Structure for ISO 19115-2 / NCEI Metadata
 
-This specification dictates the relational schema for generating standard-compliant ISO 19115-2 XML metadata. The architecture employs an "Event-Driven" relational model, heavily inspired by OGC SensorThings and ISO 19115-2. Data is distributed across six CSVs linked by a common UUID. This allows for arbitrary field hierarchies (e.g., Survey -> Cruise -> Deployment -> Site).
+**Document Type:** Architecture Standard & Compliance Guidelines
+**Target Standards:** ISO 19115-2, NCEI Archival Rubric, OGC SensorThings (Conceptual)
 
-To ensure database clarity and interoperability, CSV headers utilize exact, descriptive terms (e.g., `event_id`). A crosswalk to standard vocabularies—such as Dublin Core (dc/dcterms), Attribute Convention for Data Discovery (acdd), and the Location Core Vocabulary (locn)—is explicitly mapped in the schema definitions below.
+## 1. Architectural Principles and Normative Rules
 
-### 1.1 Compliance and Validation Mandates
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in RFC 2119.
 
-To achieve baseline validation and successful archival ingestion, specific fields must be populated. The schema distinguishes between system-level requirements (necessary for relational integrity) and archival requirements (necessary for NCEI to accept the XML).
+This standard utilizes an Event-Driven relational model distributed across seven CSV tables, linked by exact, descriptive engineering headers (e.g., `event_id`). 
 
-* **ISO 19115-2 Mandates:** Strictly requires a spatial bounding box, a temporal bounding box, and at least one topical keyword.
-* **NCEI Archival Mandates:** The NCEI Rubric expands upon ISO baselines, requiring an explicit abstract, at least one Point of Contact (Creator), platform/instrument descriptions for observational data, and variable (measured parameter) definitions.
-* **Inheritance Principle ("Heavy Parent, Skinny Child"):** Mandatory fields such as Abstract and Point of Contact are only strictly required at the **Parent Event** level. Child events may leave these fields null (`NULL`); downstream Extract-Transform-Load (ETL) pipelines shall walk up the `parent_event_id` chain to inherit parent values.
+### 1.1 Record Granularity and Hierarchy
+* **Granularity:** Implementations SHALL generate a discrete ISO 19115-2 record for every event node. Top-level nodes (no parent) map to `MD_ScopeCode="project"` or `"series"`. Leaf nodes map to `MD_ScopeCode="dataset"`.
+* **Inheritance:** "Skinny Child" leaf events MAY omit heavy descriptive fields (e.g., Contacts, Abstracts). Compiling pipelines MUST resolve missing mandatory fields by walking up the `parent_event_id` chain and inheriting values from the nearest populated ancestor.
 
-### 1.2 Data vs. Metadata Separation (The STAC & NetCDF Paradigm)
+### 1.2 Geometry and Temporal Rules
+* **CRS:** All spatial coordinates MUST be expressed in WGS84 (EPSG:4326) with a Longitude/Latitude axis order. 
+* **Bounding Boxes:** Pipelines SHALL derive ISO 19115 bounding boxes from the provided `geometry` Well-Known Text (WKT). Implementations MUST correctly calculate boxes crossing the antimeridian.
+* **Ongoing Events:** If an event is currently active, `end_time` MAY be left NULL, resolving to a nil reason of "unknown" or "ongoing" in the resulting ISO XML.
 
-This schema strictly defines *discovery metadata*. Item-level data payloads shall not be stored here.
+### 1.3 Data Payload Separation
+This metadata schema defines *discovery metadata*. Data payloads (e.g., self-describing NetCDF files, STAC Catalogs for imagery) SHALL NOT be stored within these tables. They MUST be referenced via the `Related_Entities.csv` network table.
 
-* **Continuous/Discrete Numerical Data:** Recommend that these be stored as self-describing NetCDF files.
-* **Extensive Visual Data (Video/Imagery):** Recommend that image and video manifests be managed via a SpatioTemporal Asset Catalog (STAC).
-* **Integration:** The ISO 19115-2 records generated from this schema shall act as the central hub, utilizing the `Related_Entities.csv` to provide high-level endpoint URLs pointing to the overarching data files.
+---
 
 ## 2. Schema Definitions
 
 ### 2.1 Events.csv (The Core Tree)
+*Establishes the hierarchy, timing, and spatial footprint. One distinct platform operation = one event.*
 
-*This table establishes the hierarchy, timing, spatial footprint, and overarching project details. For "Skinny Child" sites, the heavy fields (Abstract, Purpose, POCs) can be left blank (NULL); the generation script will inherit them. Rule of thumb: One platform operation = one event.*
-
-| CSV Header | Description | Ontology Mapping | Requirement Level | 
+| CSV Header | Target Standard / Ontology | Requirement Level | Description |
 | ----- | ----- | ----- | ----- |
-| `event_id` | **PRIMARY KEY:** Unique UUID for this specific event node. | `dc:identifier` | **SYSTEM MANDATORY** | 
-| `parent_event_id` | **FOREIGN KEY:** UUID of the parent event. Leave blank for top-level nodes. | `dcterms:isPartOf` | OPTIONAL (Null for Root) | 
-| `event_type` | Event category (e.g., `Survey`, `Cruise`, `Deployment`, `Drop Site`). | `dc:type` | **ARCHIVAL MANDATORY** | 
-| `event_name` | Human-readable name or local code (e.g., "Pac-Geo-01"). | `dc:title` | **ARCHIVAL MANDATORY** | 
-| `abstract` | *(Heavy Field)* Plain-language executive summary. | `dcterms:abstract` | **ARCHIVAL MANDATORY (Parent)** | 
-| `purpose` | *(Heavy Field)* Scientific rationale or funding purpose. | `acdd:purpose` | RECOMMENDED | 
-| `poc_name` | *(Heavy Field)* Name of the primary Point of Contact (POC). | `acdd:creator_name` | **ARCHIVAL MANDATORY (Parent)** | 
-| `start_time` | Time period begin (Strict ISO 8601: `YYYY-MM-DDThh:mm:ssZ`). | `acdd:time_coverage_start` | **ARCHIVAL MANDATORY** | 
-| `end_time` | Time period end (Strict ISO 8601: `YYYY-MM-DDThh:mm:ssZ`). | `acdd:time_coverage_end` | **ARCHIVAL MANDATORY** | 
-| `geometry` | Well-Known Text (WKT) representing the footprint. | `locn:geometry` | **ARCHIVAL MANDATORY** | 
+| `event_id` | `dc:identifier` / `MD_Identifier` | **MUST** | Primary Key. Unique UUID for this specific event node. |
+| `parent_event_id` | `dcterms:isPartOf` / `parentIdentifier` | **OPTIONAL** | Foreign Key to parent event. Null for root nodes. |
+| `event_type` | `dc:type` / `MI_Operation` | **MUST** | Event category (e.g., `Cruise`, `Drop Site`, `UAV Flight`). |
+| `event_name` | `dc:title` | **MUST** | Human-readable name or local code (e.g., "Pac-Geo-01"). |
+| `abstract` | `dcterms:abstract` | **MUST (Ancestry)** | Plain-language executive summary. |
+| `purpose` | `acdd:purpose` | **RECOMMENDED** | Scientific rationale or funding purpose. |
+| `start_time` | `acdd:time_coverage_start` | **MUST** | Time period begin (Strict ISO 8601). |
+| `end_time` | `acdd:time_coverage_end` | **MUST** | Time period end (Strict ISO 8601). |
+| `geometry` | `locn:geometry` / `EX_Extent` | **MUST** | WKT representing the footprint (WGS84). |
 
-### 2.2 Platforms.csv (The Vehicles / SensorThings "Things")
+### 2.2 Contacts.csv (The People & Organizations)
+*ISO 19115-2 requires distinct roles and comprehensive contact info, necessitating a dedicated table.*
 
-*Tracks the physical vehicles (Ships, AUVs, UAVs). Platforms are tied to the specific event tier they operate within (e.g., a Ship to a Cruise, an AUV to a Deployment event).*
-
-| CSV Header | Description | Ontology Mapping | Requirement Level | 
+| CSV Header | Target Standard / Ontology | Requirement Level | Description |
 | ----- | ----- | ----- | ----- |
-| `event_id` | **FOREIGN KEY:** Links back to the relevant Event. | `dcterms:isPartOf` | **SYSTEM MANDATORY** | 
-| `platform_id` | **PRIMARY KEY:** UUID or Machine key for the specific vehicle. | `dc:identifier` | **SYSTEM MANDATORY** | 
-| `platform_name` | Human-readable local name (e.g., "R/V Atlantis"). | `dc:title` | **ARCHIVAL MANDATORY** | 
-| `platform_type` | Make/Model/Class of the vehicle (if applicable). | `acdd:platform` | RECOMMENDED | 
-| `platform_vocabulary` | Vocabulary used for categorization (e.g., GCMD Platform Keywords). | `acdd:platform_vocabulary` | RECOMMENDED | 
+| `event_id` | `dcterms:isPartOf` | **MUST** | Foreign Key to `Events.csv`. |
+| `contact_name` | `acdd:creator_name` / `CI_ResponsibleParty` | **RECOMMENDED** | Name of the person (if applicable). |
+| `organization` | `acdd:creator_institution` | **MUST** | Name of the responsible organization. |
+| `email` | `acdd:creator_email` | **MUST** | Contact email address. |
+| `role` | `CI_RoleCode` | **MUST** | ISO role (e.g., `principalInvestigator`, `pointOfContact`, `custodian`). |
+| `orcid` | `dc:identifier` | **RECOMMENDED** | ORCID or ROR URL for the contact/org. |
 
-### 2.3 Sensors.csv (The Instruments)
+### 2.3 Platforms.csv (The Vehicles / "Things")
+*Tracks the physical vehicles. Utilizes global registries (e.g., ICES, IMO) rather than local UUID primary keys.*
 
-*Tracks the specific measurement devices. Sensors are tied directly to the event in which they are taking readings. We enforce "one platform per event", avoiding complex Sensor-to-Platform foreign keys.*
-
-| CSV Header | Description | Ontology Mapping | Requirement Level | 
+| CSV Header | Target Standard / Ontology | Requirement Level | Description |
 | ----- | ----- | ----- | ----- |
-| `event_id` | **FOREIGN KEY:** Links back to the relevant Event. | `dcterms:isPartOf` | **SYSTEM MANDATORY** | 
-| `sensor_id` | **PRIMARY KEY:** UUID or Machine key for the specific piece of gear. | `dc:identifier` | **SYSTEM MANDATORY** | 
-| `sensor_name` | Human-readable local name (e.g., "spherecam 3"). | `dc:title` | **ARCHIVAL MANDATORY** | 
-| `instrument_type` | Make/Model/Type of the sensor (e.g., "Sea-Bird SBE 911plus"). | `acdd:instrument` | RECOMMENDED | 
-| `instrument_vocabulary`| Vocabulary used for categorization (e.g., GCMD Instrument Keywords).| `acdd:instrument_vocabulary` | RECOMMENDED | 
+| `event_id` | `dcterms:isPartOf` | **MUST** | Foreign Key to `Events.csv`. |
+| `platform_identifier`| `dc:identifier` / `MI_Platform` | **MUST** | Code from a recognized global registry. |
+| `identifier_type` | `dc:type` | **MUST** | The registry used (e.g., `ICES`, `IMO`, `Local`). |
+| `platform_name` | `dc:title` | **MUST** | Human-readable name (e.g., "R/V Atlantis"). |
+| `platform_type` | `acdd:platform` | **RECOMMENDED** | Make/Model/Class of the vehicle. |
 
-### 2.4 Variables.csv (The Measurements / SensorThings "ObservedProperty")
+### 2.4 Sensors.csv (The Instruments)
+*Tracks specific measurement devices used during the event.*
 
-*Tracks the specific scientific measurements contained in the data. Usually tied to the lowest-level event (the Dataset/Drop).*
-
-| CSV Header | Description | Ontology Mapping | Requirement Level | 
+| CSV Header | Target Standard / Ontology | Requirement Level | Description |
 | ----- | ----- | ----- | ----- |
-| `event_id` | **FOREIGN KEY:** Links back to `Events.csv`. | `dcterms:isPartOf` | **SYSTEM MANDATORY** | 
-| `variable_name` | Parameter measured (e.g., "sea_water_temperature"). | `cf:standard_name` | **ARCHIVAL MANDATORY** | 
-| `data_type` | Data type format (e.g., "Float32", "Video", "Image"). | `dc:type` | RECOMMENDED | 
+| `sensor_id` | `dc:identifier` | **MUST** | Primary Key for this deployment instance of the sensor. |
+| `event_id` | `dcterms:isPartOf` | **MUST** | Foreign Key to `Events.csv`. |
+| `sensor_name` | `dc:title` / `MI_Instrument` | **MUST** | Human-readable name (e.g., "SBE 911plus"). |
+| `instrument_type` | `acdd:instrument` | **RECOMMENDED** | Broad type category (e.g., "CTD"). |
+| `vocabulary` | `acdd:instrument_vocabulary`| **RECOMMENDED** | Standard vocabulary used for the type. |
 
-### 2.5 Keywords.csv (The Vocabulary)
+### 2.5 Variables.csv (The Datastream / "ObservedProperty")
+*Tracks scientific measurements. Directly linked to the Sensor that measured it to preserve data lineage.*
 
-*Handles all thematic, spatial, and organizational keywords. Usually tied to the "Heavy Parent" Cruise or Survey level.*
-
-| CSV Header | Description | Ontology Mapping | Requirement Level | 
+| CSV Header | Target Standard / Ontology | Requirement Level | Description |
 | ----- | ----- | ----- | ----- |
-| `event_id` | **FOREIGN KEY:** Links back to `Events.csv`. | `dcterms:isPartOf` | **SYSTEM MANDATORY** | 
-| `vocabulary` | The thesaurus used (e.g., "GCMD Science Keywords"). | `acdd:keyword_vocabulary` | **ARCHIVAL MANDATORY** | 
-| `keyword` | The exact hierarchical keyword string. | `dc:subject` | **ARCHIVAL MANDATORY** | 
+| `sensor_id` | `dcterms:isPartOf` | **MUST** | Foreign Key to `Sensors.csv`. |
+| `variable_name` | `cf:standard_name` / `MD_Band` | **MUST** | Short standard name (e.g., "sea_water_temperature"). |
+| `variable_desc` | `dc:description` | **MUST** | Long-form description as required by NCEI. |
+| `unit_of_measure`| `qudt:unit` | **MUST** | Physical unit (e.g., "Celsius", "meter"). |
 
-### 2.6 Related_Entities.csv (The Network)
+### 2.6 Keywords.csv (The Vocabulary)
+*Handles thematic, spatial, and organizational discoverability.*
 
-*For linking external context: funding projects, published papers, or overarching Data Access endpoints.*
-
-| CSV Header | Description | Ontology Mapping | Requirement Level | 
+| CSV Header | Target Standard / Ontology | Requirement Level | Description |
 | ----- | ----- | ----- | ----- |
-| `event_id` | **FOREIGN KEY:** Links back to `Events.csv`. | `dcterms:isPartOf` | **SYSTEM MANDATORY** | 
-| `relation_type` | Defines the linkage type (e.g., `project`, `isRelatedTo`, `download`). | `dc:relation_type` | **ARCHIVAL MANDATORY** | 
-| `entity_title` | Title of the project, dataset, or paper. | `dc:title` | RECOMMENDED | 
-| `entity_id` | External machine key: DOI, Accession Number, Grant ID, etc. | `dc:identifier` | RECOMMENDED | 
-| `entity_url` | Direct URL / web link to the entity (e.g., STAC endpoint). | `dc:source` | **CONDITIONAL** (Req. for Data) | 
+| `event_id` | `dcterms:isPartOf` | **MUST** | Foreign Key to `Events.csv`. |
+| `keyword_type` | `MD_KeywordTypeCode` | **MUST** | ISO category (e.g., `theme`, `place`, `stratum`). |
+| `vocabulary` | `acdd:keyword_vocabulary` | **MUST** | Thesaurus used (e.g., "GCMD Science Keywords"). |
+| `keyword` | `dc:subject` | **MUST** | The exact hierarchical keyword string. |
 
+### 2.7 Related_Entities.csv (The Network)
+*Links external context and provides direct data access endpoints (e.g., NetCDF files, STAC Catalogs).*
+
+| CSV Header | Target Standard / Ontology | Requirement Level | Description |
+| ----- | ----- | ----- | ----- |
+| `event_id` | `dcterms:isPartOf` | **MUST** | Foreign Key to `Events.csv`. |
+| `relation_type` | `dc:relation` / `CI_RoleCode` | **MUST** | Standard link type (e.g., `isRelatedTo`, `download`). |
+| `entity_title` | `dc:title` | **RECOMMENDED** | Name of the project, dataset, or paper. |
+| `entity_url` | `dc:source` / `CI_OnlineResource`| **RECOMMENDED** | Direct URL to the entity/payload. |
+| `entity_id` | `dc:identifier` | **OPTIONAL** | External machine key (DOI, Grant ID). |
