@@ -19,5 +19,19 @@
 
 ## Notes:
 Scott built out of a simple tool to create steps to ingest data. Points to data locations etc.  Builds an xml file.  
-Minimum data is the POC email for the data set
-Carrots would  
+Minimum data is the POC email for the data set.  Creates an index to refer to data.
+Carrots would be to collect meta data down to a site or deployment or dive .... as granular as you would want
+Kelsey has built a script to scrape bucket for relevant file names, convert data to csv and eventually to xml 
+Scott has volunteered to be "gate keeper". Kelsey can help as well.
+
+Can we replace the bucket info in the xml if we move to a new bucket (i.e., move from landing to SEFSC)? 
+Gemini answer:
+Yes. In standard ISO 19115/19139 documents, bucket names and folder prefixes are simply text values stored inside XML tags (such as gmd:transferOptions//gmd:onLine//gmd:linkage or aggregate identifier elements).
+Because it is standard XML text, you can replace the old bucket name and parent path using either URI string replacement or parsed XML node updates.
+
+Action items:
+- look up NCEI recommendations for units
+- generate a "minimum requirements list" for what needs to go in the xml file
+- get access to the landing bucket once it's created
+    - storage admin to EVERYONE
+- 
