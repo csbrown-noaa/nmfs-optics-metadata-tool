@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ISO 19115 Metadata Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen text-gray-800 p-4 sm:p-8">
+    
+    <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
+        <!-- Header -->
+        <div class="bg-indigo-600 px-6 py-8 sm:p-10 text-white">
+            <h1 class="text-3xl font-bold tracking-tight">ISO 19115 Metadata Generator</h1>
+            <p class="mt-2 text-indigo-100 text-sm sm:text-base">Create standard ISO 19139 compliant XML metadata files for your geospatial datasets.</p>
+        </div>
+
+        <!-- Form -->
+        <form id="metadataForm" class="px-6 py-8 sm:p-10 space-y-8">
+            
+            <!-- Section: General Info -->
+            <div>
+                <h2 class="text-xl font-semibold text-gray-900 border-b pb-2 mb-4">1. General Information</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label for="title" class="block text-sm font-medium text-gray-700">Metadata Title <span class="text-red-500">*</span></label>
+                        <input type="text" id="title" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border" placeholder="e.g., Global Land Cover Dataset 2023">
+                    </div>
+                    <div>
+                        <label for="abstract" class="block text-sm font-medium text-gray-700">Abstract <span class="text-red-500">*</span></label>
+                        <textarea id="abstract" rows="4" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border" placeholder="A brief narrative summary of the dataset..."></textarea>
+                    </div>
+                    <div>
+                        <label for="date" class="block text-sm font-medium text-gray-700">Creation Date <span class="text-red-500">*</span></label>
+                        <input type="date" id="date" required class="mt-1 block w-full sm:w-1/3 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section: Point of Contact -->
+            <div>
+                <h2 class="text-xl font-semibold text-gray-900 border-b pb-2 mb-4">2. Point of Contact</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label for="pocName" class="block text-sm font-medium text-gray-700">Individual Name <span class="text-red-500">*</span></label>
+                        <input type="text" id="pocName" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border" placeholder="e.g., Jane Doe">
+                    </div>
+                    <div>
+                        <label for="pocOrg" class="block text-sm font-medium text-gray-700">Organization Name <span class="text-red-500">*</span></label>
+                        <select id="pocOrg" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border bg-white">
+                            <option value="" disabled selected>Select a Center...</option>
+                            <option value="SEFSC">SEFSC</option>
+                            <option value="NWFSC">NWFSC</option>
+                            <option value="NEFSC">NEFSC</option>
+                            <option value="AFSC">AFSC</option>
+                            <option value="PIFSC">PIFSC</option>
+                            <option value="SWFSC">SWFSC</option>
+                        </select>
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label for="pocEmail" class="block text-sm font-medium text-gray-700">Email Address <span class="text-red-500">*</span></label>
+                        <input type="email" id="pocEmail" required pattern=".*@noaa\.gov$" title="Must be a valid @noaa.gov email address" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border" placeholder="jane.doe@noaa.gov">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section: Geofence -->
+            <div>
+                <h2 class="text-xl font-semibold text-gray-900 border-b pb-2 mb-4">3. Geographic Bounding Box</h2>
+                <p class="text-sm text-gray-500 mb-4">Enter coordinates in decimal degrees (WGS 84). To cross the antimeridian, enter a West Longitude that is numerically greater than the East Longitude.</p>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div>
+                        <label for="north" class="block text-sm font-medium text-gray-700">North Latitude <span class="text-red-500">*</span></label>
+                        <input type="number" id="north" step="any" min="-90" max="90" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border" placeholder="e.g., 45.5">
+                    </div>
+                    <div>
+                        <label for="south" class="block text-sm font-medium text-gray-700">South Latitude <span class="text-red-500">*</span></label>
+                        <input type="number" id="south" step="any" min="-90" max="90" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border" placeholder="e.g., 30.2">
+                    </div>
+                    <div>
+                        <label for="east" class="block text-sm font-medium text-gray-700">East Longitude <span class="text-red-500">*</span></label>
+                        <input type="number" id="east" step="any" min="-180" max="180" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border" placeholder="e.g., -90.1">
+                    </div>
+                    <div>
+                        <label for="west" class="block text-sm font-medium text-gray-700">West Longitude <span class="text-red-500">*</span></label>
+                        <input type="number" id="west" step="any" min="-180" max="180" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border" placeholder="e.g., -120.5">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="pt-6">
+                <button type="submit" class="w-full sm:w-auto flex justify-center py-3 px-8 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
+                    Generate and Download XML
+                </button>
+            </div>
+            
+            <!-- Success Message (Hidden initially) -->
+            <div id="successMessage" class="hidden mt-4 p-4 rounded-md bg-green-50 text-green-800 border border-green-200">
+                ✅ XML generated and download triggered successfully!
+            </div>
+        </form>
+    </div>
+
+    <!-- JavaScript to handle form logic and XML generation -->
+    <script>
+        // Set today's date as default
+        document.getElementById('date').valueAsDate = new Date();
+
+        // Custom validation for NOAA email
+        const emailInput = document.getElementById('pocEmail');
+        emailInput.addEventListener('input', function() {
+            if (this.value && !this.value.toLowerCase().endsWith('@noaa.gov')) {
+                this.setCustomValidity("Email must end with @noaa.gov");
+            } else {
+                this.setCustomValidity("");
+            }
+        });
+
+        // Custom validation for Latitude (South <= North). 
+        // West can be > East to intentionally allow antimeridian crossing per ISO 19115.
+        const validateLats = () => {
+            const n = parseFloat(document.getElementById('north').value);
+            const s = parseFloat(document.getElementById('south').value);
+            const sInput = document.getElementById('south');
+            if (!isNaN(n) && !isNaN(s) && s > n) {
+                sInput.setCustomValidity("South latitude cannot be greater than North latitude.");
+            } else {
+                sInput.setCustomValidity("");
+            }
+        };
+        document.getElementById('north').addEventListener('input', validateLats);
+        document.getElementById('south').addEventListener('input', validateLats);
+
+        // Helper to escape characters for XML compliance
+        function escapeXML(unsafe) {
+            return unsafe.replace(/[<>&'"]/g, function (c) {
+                switch (c) {
+                    case '<': return '&lt;';
+                    case '>': return '&gt;';
+                    case '&': return '&amp;';
+                    case '\'': return '&apos;';
+                    case '"': return '&quot;';
+                }
+            });
+        }
+
+        // Form submission handler
+        document.getElementById('metadataForm').addEventListener('submit', function(event) {
+            event.preventDefault(); // Prevent page reload
+
+            // Extract values
+            const title = escapeXML(document.getElementById('title').value);
+            const abstract = escapeXML(document.getElementById('abstract').value);
+            const date = document.getElementById('date').value;
+            const pocName = escapeXML(document.getElementById('pocName').value);
+            const pocOrg = escapeXML("NOAA > NMFS > " + document.getElementById('pocOrg').value);
+            const pocEmail = escapeXML(document.getElementById('pocEmail').value);
+            const north = document.getElementById('north').value;
+            const south = document.getElementById('south').value;
+            const east = document.getElementById('east').value;
+            const west = document.getElementById('west').value;
+
+            // Generate UUID for file identifier
+            const uuid = crypto.randomUUID ? crypto.randomUUID() : 'id-' + Date.now();
+
+            // Construct ISO 19139 XML String
+            const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+<gmd:MD_Metadata xmlns:gmd="http://www.isotc211.org/2005/gmd"
+                 xmlns:gco="http://www.isotc211.org/2005/gco"
+                 xmlns:gml="http://www.opengis.net/gml"
+                 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                 xsi:schemaLocation="http://www.isotc211.org/2005/gmd http://schemas.opengis.net/iso/19139/20070417/gmd/gmd.xsd">
+    <gmd:fileIdentifier>
+        <gco:CharacterString>${uuid}</gco:CharacterString>
+    </gmd:fileIdentifier>
+    <gmd:language>
+        <gco:CharacterString>eng; USA</gco:CharacterString>
+    </gmd:language>
+    <gmd:characterSet>
+        <gmd:MD_CharacterSetCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#MD_CharacterSetCode" codeListValue="utf8">utf8</gmd:MD_CharacterSetCode>
+    </gmd:characterSet>
+    
+    <!-- Point of Contact -->
+    <gmd:contact>
+        <gmd:CI_ResponsibleParty>
+            <gmd:individualName>
+                <gco:CharacterString>${pocName}</gco:CharacterString>
+            </gmd:individualName>
+            <gmd:organisationName>
+                <gco:CharacterString>${pocOrg}</gco:CharacterString>
+            </gmd:organisationName>
+            <gmd:contactInfo>
+                <gmd:CI_Contact>
+                    <gmd:address>
+                        <gmd:CI_Address>
+                            <gmd:electronicMailAddress>
+                                <gco:CharacterString>${pocEmail}</gco:CharacterString>
+                            </gmd:electronicMailAddress>
+                        </gmd:CI_Address>
+                    </gmd:address>
+                </gmd:CI_Contact>
+            </gmd:contactInfo>
+            <gmd:role>
+                <gmd:CI_RoleCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#CI_RoleCode" codeListValue="pointOfContact">pointOfContact</gmd:CI_RoleCode>
+            </gmd:role>
+        </gmd:CI_ResponsibleParty>
+    </gmd:contact>
+    
+    <gmd:dateStamp>
+        <gco:Date>${date}</gco:Date>
+    </gmd:dateStamp>
+    
+    <!-- Identification Info (Title, Abstract, Bounding Box) -->
+    <gmd:identificationInfo>
+        <gmd:MD_DataIdentification>
+            <gmd:citation>
+                <gmd:CI_Citation>
+                    <gmd:title>
+                        <gco:CharacterString>${title}</gco:CharacterString>
+                    </gmd:title>
+                    <gmd:date>
+                        <gmd:CI_Date>
+                            <gmd:date>
+                                <gco:Date>${date}</gco:Date>
+                            </gmd:date>
+                            <gmd:dateType>
+                                <gmd:CI_DateTypeCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#CI_DateTypeCode" codeListValue="creation">creation</gmd:CI_DateTypeCode>
+                            </gmd:dateType>
+                        </gmd:CI_Date>
+                    </gmd:date>
+                </gmd:CI_Citation>
+            </gmd:citation>
+            <gmd:abstract>
+                <gco:CharacterString>${abstract}</gco:CharacterString>
+            </gmd:abstract>
+            <gmd:language>
+                <gco:CharacterString>eng; USA</gco:CharacterString>
+            </gmd:language>
+            
+            <!-- Extent / Geographic Bounding Box -->
+            <gmd:extent>
+                <gmd:EX_Extent>
+                    <gmd:geographicElement>
+                        <gmd:EX_GeographicBoundingBox>
+                            <gmd:westBoundLongitude>
+                                <gco:Decimal>${west}</gco:Decimal>
+                            </gmd:westBoundLongitude>
+                            <gmd:eastBoundLongitude>
+                                <gco:Decimal>${east}</gco:Decimal>
+                            </gmd:eastBoundLongitude>
+                            <gmd:southBoundLatitude>
+                                <gco:Decimal>${south}</gco:Decimal>
+                            </gmd:southBoundLatitude>
+                            <gmd:northBoundLatitude>
+                                <gco:Decimal>${north}</gco:Decimal>
+                            </gmd:northBoundLatitude>
+                        </gmd:EX_GeographicBoundingBox>
+                    </gmd:geographicElement>
+                </gmd:EX_Extent>
+            </gmd:extent>
+            
+        </gmd:MD_DataIdentification>
+    </gmd:identificationInfo>
+</gmd:MD_Metadata>`;
+
+            // Create Blob and download
+            const blob = new Blob([xmlString], { type: "text/xml" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            
+            // Format title for filename
+            const safeFileName = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+            a.href = url;
+            a.download = `iso19115-metadata-${safeFileName || 'export'}.xml`;
+            
+            // Trigger download
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            // Show success message
+            const successMsg = document.getElementById('successMessage');
+            successMsg.classList.remove('hidden');
+            setTimeout(() => {
+                successMsg.classList.add('hidden');
+            }, 4000);
+        });
+    </script>
+</body>
+</html>
