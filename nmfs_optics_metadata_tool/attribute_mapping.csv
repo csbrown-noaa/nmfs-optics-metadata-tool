@@ -1,1 +1,11 @@
-
+Attribute,Folder Level,ISO 19115 (ISO 19139) Tag,Requirement
+Survey Name,All levels,gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:title,Mandatory
+Collection Date,Site/Dive/Flight,gmd:identificationInfo/gmd:MD_DataIdentification/gmd:extent/gmd:EX_Extent/gmd:temporalElement/gmd:EX_TemporalExtent/gmd:extent/gml:TimePeriod,Mandatory
+Site/Dive ID,Site/Dive/Flight,gmi:acquisitionInformation/gmi:MI_AcquisitionInformation/gmi:operation/gmi:MI_Operation/gmi:identifier/gmd:MD_Identifier/gmd:code,Mandatory
+Survey POC,All levels,gmd:identificationInfo/gmd:MD_DataIdentification/gmd:pointOfContact/gmd:CI_ResponsibleParty,Mandatory
+Data Owner,Site/Dive/Flight,gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:citedResponsibleParty/gmd:CI_ResponsibleParty,Mandatory
+Geographic Bounding Box,Site/Dive/Flight,gmd:identificationInfo/gmd:MD_DataIdentification/gmd:extent/gmd:EX_Extent/gmd:geographicElement/gmd:EX_GeographicBoundingBox,Mandatory
+GCS Path,All levels,gmd:MD_Distribution/gmd:transferOptions/gmd:MD_DigitalTransferOptions/gmd:onLine/gmd:CI_OnlineResource/gmd:linkage,Mandatory
+Depth/Altitude,Site/Dive/Flight,gmd:identificationInfo/gmd:MD_DataIdentification/gmd:extent/gmd:EX_Extent/gmd:verticalElement/gmd:EX_VerticalExtent,Optional
+Temperature,Site/Dive/Flight,gmi:acquisitionInformation/gmi:MI_AcquisitionInformation/gmi:operation/gmi:MI_Operation/gmi:significantEvent/gmi:MI_Event/gmi:environmentalConditions,Optional
+Salinity,Site/Dive/Flight,gmi:acquisitionInformation/gmi:MI_AcquisitionInformation/gmi:operation/gmi:MI_Operation/gmi:significantEvent/gmi:MI_Event/gmi:environmentalConditions,Optional
